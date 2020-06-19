@@ -71,16 +71,13 @@ class GraphAnchorLDA(object):
         
         diag_M = np.zeros(vocab_size)
 
-        for j in range(M.indptr.size - 1): # M的行数
+        for j in range(M.indptr.size - 1):
             # start and end indices for column j
             start = M.indptr[j]
             end = M.indptr[j + 1]
-            # end - start = 当前行的元素个数
             
-            wpd = np.sum(M.data[start : end]) # 当前行的元素求和
+            wpd = np.sum(M.data[start : end]) 
             row_indices = M.indices[start:end]
-            # diag_M[row_indices] += M.data[start:end]/(wpd*(wpd-1)) # 如果有某个单词，从来没在某个文档出现过，就会出现nan
-            # M.data[start:end] = M.data[start:end]/math.sqrt(wpd*(wpd-1))
             if wpd == 0 or wpd == 1:
                 diag_M[row_indices] += 0
                 M.data[start : end] = 0

@@ -73,7 +73,6 @@ class StructuralTopicGCN:
         self.batch_input = tf.placeholder(tf.int32, [None])
         self.input_size = tf.placeholder(tf.int32)
 
-        # sample一样，只是特征不一样
         samples_keys = self.sample(self.batch_keys, self.num_neighbor, self.batch_size)
         samples_labels = self.sample(self.batch_labels, self.num_neighbor, self.batch_size)
         samples_negs = self.sample(self.batch_negs, self.num_neighbor, self.neg_size)
@@ -143,7 +142,7 @@ class StructuralTopicGCN:
         adj_lists = tf.transpose(tf.random_shuffle(tf.transpose(adj_lists)))
         neigh_nodes = tf.slice(adj_lists, [0, 0], [-1, num_samples])
         
-        return  tf.squeeze(neigh_nodes) # 删除所有为1的维度
+        return  tf.squeeze(neigh_nodes) 
 
 
     def sample(self, inputs, num_sample, input_size):
