@@ -15,6 +15,15 @@ from dataset import *
 
 
 class StructuralTopicGCN:
+    """ Structural Topic GCN
+    Args:
+        neg_size: negative sampling size
+        num_steps: steps to train
+        embedding_dims: the size of node embeddings
+        num_neighbor: number of neighbors to sample, for graphsage / unsupervised gcn
+    Returns:
+        node embeddings
+    """
     def __init__(self, params):       
         self.dataset_name = params["dataset"]        
         self.window_size = params["TopicGCN"]["window_size"]
@@ -70,47 +79,17 @@ class StructuralTopicGCN:
         samples_negs = self.sample(self.batch_negs, self.num_neighbor, self.neg_size)
         samples_output = self.sample(self.batch_input, self.num_neighbor, self.input_size)
 
-        # samples_keys_lda = self.sample_lda(self.batch_keys, self.num_neighbor, self.batch_size)
-        # samples_labels_lda = self.sample_lda(self.batch_labels, self.num_neighbor, self.batch_size)
-        # samples_negs_lda = self.sample_lda(self.batch_negs, self.num_neighbor, self.neg_size)
-        # samples_output_lda = self.sample_lda(self.batch_input, self.num_neighbor, self.input_size)
-
-        # samples_keys_lda = self.sample(self.batch_keys, self.num_neighbor, self.batch_size)
-        # samples_labels_lda = self.sample(self.batch_labels, self.num_neighbor, self.batch_size)
-        # samples_negs_lda = self.sample(self.batch_negs, self.num_neighbor, self.neg_size)
-        # samples_output_lda = self.sample(self.batch_input, self.num_neighbor, self.input_size)
-        
 
         if self.flag_input_node_feature:
             output_key = self.aggregate(samples_keys, self.batch_size, self.feature_dims, self.node_features, False)
             output_label = self.aggregate(samples_labels, self.batch_size, self.feature_dims, self.node_features, False)
             output_neg = self.aggregate(samples_negs, self.neg_size, self.feature_dims, self.node_features, False)
             output_normal = self.aggregate(samples_output, self.input_size, self.feature_dims, self.node_features, False)
-            # 基于LDA 的GCN
-            # self.output_key_lda = self.aggregate_lda(self.samples_keys_lda, self.batch_size)
-            # self.output_label_lda = self.aggregate_lda(self.samples_labels_lda, self.batch_size)
-            # self.output_neg_lda = self.aggregate_lda(self.samples_negs_lda, self.neg_size)
-            # self.output_lda = self.aggregate_lda(self.samples_output_lda, self.input_size)
+            
             output_key_topic = self.aggregate(samples_keys, self.batch_size, self.feature_dims_topic, self.node_topic_features, True)
             output_label_topic = self.aggregate(samples_labels, self.batch_size, self.feature_dims_topic, self.node_topic_features, True)
             output_neg_topic = self.aggregate(samples_negs, self.neg_size, self.feature_dims_topic, self.node_topic_features, True)
             output_topic = self.aggregate(samples_output, self.input_size, self.feature_dims_topic, self.node_topic_features, True)
-            
-
-            # self.output_key_lda = self.aggregate(self.samples_keys_lda, self.batch_size)
-            # self.output_label_lda = self.aggregate(self.samples_labels_lda, self.batch_size)
-            # self.output_neg_lda = self.aggregate(self.samples_negs_lda, self.neg_size)
-            # self.output_lda = self.aggregate(self.samples_output_lda, self.input_size)
-
-            # self.output_key = tf.nn.l2_normalize(self.output_key, 1)
-            # self.output_label = tf.nn.l2_normalize(self.output_label, 1)
-            # self.output_neg = tf.nn.l2_normalize(self.output_neg, 1)
-            # self.output_normal = tf.nn.l2_normalize(self.output_normal, 1)
-
-            # self.output_key_lda = tf.nn.l2_normalize(self.output_key_lda, 1)
-            # self.output_label_lda = tf.nn.l2_normalize(self.output_label_lda, 1)
-            # self.output_neg_lda = tf.nn.l2_normalize(self.output_neg_lda, 1)
-            # self.output_lda = tf.nn.l2_normalize(self.output_lda, 1)
 
             output_key_combine = self.combine(output_key, output_key_topic, self.batch_size)
             output_label_combine = self.combine(output_label, output_label_topic, self.batch_size)
@@ -159,10 +138,8 @@ class StructuralTopicGCN:
         return -tf.reduce_mean(likelihood)
 
       
-    def sampleNeighbor(self, batch_nodes, num_samples): # 对邻居采样
+    def sampleNeighbor(self, batch_nodes, num_samples): 
         adj_lists = tf.nn.embedding_lookup(self.Dataset.adj_info, batch_nodes) 
-        # tf.nn.embedding_lookup，选取一个张量里面索引对应的元素
-
         adj_lists = tf.transpose(tf.random_shuffle(tf.transpose(adj_lists)))
         neigh_nodes = tf.slice(adj_lists, [0, 0], [-1, num_samples])
         
@@ -294,54 +271,3 @@ class StructuralTopicGCN:
             micros.append(micro_f1)
         print("Node classification macro f1: %.4f"%np.mean(macros))
         print("Node classification micro f1: %.4f"%np.mean(micros))   
-
-    '''
-    def sample(self, inputs, num_sample, input_size):
-        samples = [inputs]
-        support_size = input_size
-
-        # 采样1阶邻居
-        support_size *= num_sample
-        nodes = self.sampleNeighbor(samples[0], num_sample)
-        samples.append(tf.reshape(nodes, [support_size]))
-
-        # 采样2阶邻居 + topic相似的邻居
-        support_size *= num_sample
-        support_size *= 2
-        nodes = self.samleLDANeighbor(samples[1], num_sample)
-        samples.append(tf.reshape(nodes, [support_size]))
-
-        return samples
-
-
-    def sample_lda(self, inputs, num_sample, input_size):
-        samples = [inputs]
-        support_size = input_size
-
-        # 采样到2阶邻居
-        for k in range(3):
-            support_size *= num_sample
-            nodes = self.sampleNeighbor(samples[k], num_sample)
-            samples.append(tf.reshape(nodes, [support_size]))
-
-        return samples
-
-
-    def samleLDANeighbor(self, batch_nodes, num_samples):
-        adj_lists = tf.nn.embedding_lookup(self.Dataset.adj_info, batch_nodes) 
-        # tf.nn.embedding_lookup，选取一个张量里面索引对应的元素
-
-        adj_lists = tf.transpose(tf.random_shuffle(tf.transpose(adj_lists)))
-        neigh_nodes = tf.slice(adj_lists, [0, 0], [-1, num_samples])
-        # print(neigh_nodes.get_shape())
-        neigh_nodes = tf.squeeze(neigh_nodes) # 删除所有为1的维度
-
-        adj_lists_LDA = tf.nn.embedding_lookup(self.Dataset.adj_info_LDA, batch_nodes) 
-        adj_lists_LDA = tf.transpose(tf.random_shuffle(tf.transpose(adj_lists)))
-
-        neigh_nodes_LDA = tf.slice(adj_lists_LDA, [0, 0], [-1, num_samples])
-        neigh_nodes_LDA = tf.squeeze(neigh_nodes)
-
-        
-        return  tf.concat([neigh_nodes, neigh_nodes_LDA], 0)
-    '''

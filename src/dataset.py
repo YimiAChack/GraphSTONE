@@ -9,6 +9,16 @@ import math
 
 
 class dataset:
+    """ generate random walks and neighbors for  graphsage / unsupervised gcn
+    Args:
+        path_length: length of random walks
+        window_size: window size to sample neighborhood
+        num_skips: number of samples to draw from a single walk
+        num_neighbor: number of neighbors to sample, for graphsage / unsupervised gcn
+    Returns:
+        random walk sequences
+        1 and 2 order neighbors around a center node
+    """
     def __init__(self, params):
         self.path_length = params["TopicGCN"]["path_length"]
         self.num_paths = params["TopicGCN"]["number_paths"]

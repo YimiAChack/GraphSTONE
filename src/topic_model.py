@@ -13,6 +13,14 @@ from scipy.sparse import csr_matrix
 
 
 class GraphAnchorLDA(object):
+    """ generate topic features for each node, based on learned distributions of walk-topic, and node_topic
+    Args:
+        number_topic: number of latent topics, a hyperparameter
+    Returns:
+        walk_topic_distribution: distribution of each anonymous walk sequence and each topic
+        node_topic_distribution: distribution of each node and each topic
+        topic_features: generated topic features
+    """
     def __init__(self, params):
         self.K = params["TopicModel"]["number_topic"]
         self.number_topic = params["TopicModel"]["number_topic"]
@@ -28,6 +36,8 @@ class GraphAnchorLDA(object):
         self.path_topic_features = os.path.join("../data/output", params["dataset"], params["TopicModel"]["path_topic_features"])
 
     def learn_topic_distribution(self):
+        """learn distributions of walk-topic, and node_topic
+        """
         self.M = scipy.io.loadmat(self.path_doc_word + ".trunc")['M']  # M [3155*2708] => [word * document]
         # print(M.todense())
 
@@ -52,8 +62,10 @@ class GraphAnchorLDA(object):
   
 
     def generate_Q_matrix(self, M):
-        # Given a sparse CSC document matrix M (with floating point entries)
-        # comptues the word-word correlation matrix Q
+        """
+           Given a sparse CSC document matrix M (with floating point entries),
+           comptues the word-word correlation matrix Q
+        """
         vocab_size = M.shape[0] # number of words
         num_docs = M.shape[1] # number of documents
         
@@ -76,7 +88,7 @@ class GraphAnchorLDA(object):
                 diag_M[row_indices] += M.data[start : end] / (wpd * (wpd - 1))
                 M.data[start : end] = M.data[start : end] / math.sqrt(wpd * (wpd - 1))
         
-        Q = M * M.transpose()/ num_docs # word - word 在每个文档内平均共现的次数
+        Q = M * M.transpose()/ num_docs # avg co-occurrence word-word in each document
         Q = Q.todense()
         Q = np.array(Q, copy=False)
         diag_M = diag_M / num_docs
@@ -86,7 +98,8 @@ class GraphAnchorLDA(object):
 
 
     def select_anchors(self, Q, candidates):
-        # select anchors based on walk-walk co-occurrence matrix, through non-negative matrix factorization (NMF)
+        """select anchors based on walk-walk co-occurrence matrix, through non-negative matrix factorization (NMF)
+        """
         Q[Q < 0] = 0.001 # my add
         model = NMF(n_components=self.number_topic, init='random', random_state=0)
         model.fit(Q)
@@ -271,7 +284,7 @@ class GraphAnchorLDA(object):
                 if M[i][val] > 0:
                     feats[i][idx] = 1.0
 
-        # 如果出现某一行全是0的情况，就随机给一个特别小的值
+        # avoid 0
         for i in range(len(feats)):
             if np.all(feats[i] == 0.0): # all
                 feats[i][0] = 0.00001
@@ -293,7 +306,7 @@ class GraphAnchorLDA(object):
         key_structures = []
 
         for i in range(len(X_var)):
-            if np.any(X[i] == 0.0): # 方差很大, 有一列为0
+            if np.any(X[i] == 0.0): # select rows with large var
                 key_structures.append(i)
 
 
@@ -303,7 +316,7 @@ class GraphAnchorLDA(object):
         if len(key_structures) < self.max_anchors_num:
             return key_structures
 
-        argsorted = np.argsort(X_var) # 大的在后面
+        argsorted = np.argsort(X_var) # larger one is in the back
         for i in range(number - top_num - 1, number):
             if argsorted[i] not in key_structures:
                 key_structures.append(argsorted[i])

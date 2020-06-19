@@ -10,6 +10,14 @@ import utils
 
 
 class Walks(object):
+    """ generate topic concepts, for the input of GraphAnchorLDA
+    Args:
+        number_paths: number of random walks started from a center node
+        path_length: length of random walks
+        anonymous_walk_max_length: max length of anonymous walks
+    Returns:
+        Co-occurrence of graph "word" (anonymous walk) and "document" (neighborhoods around a center node)
+    """
     def __init__(self, params): 
         self.G = nx.read_edgelist(os.path.join("../data/input", params["dataset"], "edges.txt"), create_using = nx.Graph())
         self.params = params
@@ -22,8 +30,10 @@ class Walks(object):
 
         
     def generate_topic_concepts(self):
-        # 生成随机游走的序列和对应的匿名游走 
-        print("Walking...")
+        """generate topic concepts, for the input of GraphAnchorLDA
+        """
+
+        # generate random walks and corresponding anonymous walks
         random_walks = self.generate_random_walks()
         anonymous_walks = self.generate_anonymous_walks(random_walks)
 
@@ -36,6 +46,9 @@ class Walks(object):
 
 
     def generate_random_walks(self, rand=random.Random(0)):
+        """generate random walks
+        """
+        print("Walking...")
         nodes = list(self.G.nodes())
         walks = list()
 
@@ -46,11 +59,13 @@ class Walks(object):
 
 
     def generate_anonymous_walks(self, random_walks):
-        anonymous_walks = [[] for i in range(self.G.number_of_nodes())]  # 以每个节点为中心，向外的匿名游走
+        """generate anonymous walks, based on random walks
+        """
+        anonymous_walks = [[] for i in range(self.G.number_of_nodes())]  # Take each node as the center node
 
         for random_walk_seq in random_walks:
             anonymous_walk_seq = self.random_to_anonymous_walk(random_walk_seq)
-            if 2 < len(anonymous_walk_seq) <= self.anonymous_walk_max_length: # 只保留长度为K的匿名游走序列
+            if 2 < len(anonymous_walk_seq) <= self.anonymous_walk_max_length: # select seq with specified length
                 center_node = int(random_walk_seq[0])
                 anonymous_walks[center_node].append(anonymous_walk_seq) 
                 # if not filter_any(anonym_walk):
@@ -83,7 +98,8 @@ class Walks(object):
 
 
     def random_to_anonymous_walk(self, random_walk_seq):
-        # convert a random walk sequence to an anonymous walk
+        """convert a random walk sequence to an anonymous walk
+        """
         cnt = 0
         node_cnt = dict()
         anonymous_walk_seq = []
@@ -97,7 +113,8 @@ class Walks(object):
 
 
     def trans_matrix_sparse(self, input_matrix):
-        # transform input matrix to sparse matrix
+        """transform input matrix to sparse matrix
+        """
         infile = open(input_matrix, "r")
         num_docs = int(infile.readline())
         num_words = int(infile.readline())
@@ -112,7 +129,8 @@ class Walks(object):
 
 
     def truncate_vocabulary(self, input_sparse_matrix, input_full_vocab, output_matrix, output_vocab, cutoff):
-        # Read in the vocabulary and build a symbol table mapping words to indices
+        """Read in the vocabulary, and build a symbol table mapping words to indices
+        """
         table = dict()
         numwords = 0
         for line in open(input_full_vocab, 'r'):
@@ -153,7 +171,6 @@ class Walks(object):
         M = M.tocsc()
         scipy.io.savemat(output_matrix, {'M' : M}, oned_as='column')
 
-
         print ('New number of words is ', M.shape[0])
         print ('New number of documents is ', M.shape[1])
 
@@ -169,7 +186,8 @@ class Walks(object):
 
 
     def generate_word_document(self, anonymous_walks, outfile_docword, outfile_vocab):
-        # generate word-document, for the input of LDA
+        """generate word-document, for the input of LDA
+        """
         anonymous_dict = dict() 
         idx = 0
         anonymous_walks_idx = [[] for _ in range(self.G.number_of_nodes())] 
@@ -193,7 +211,7 @@ class Walks(object):
                     anonymous_walks_idx[i].append(anonymous_dict[str(w)])
 
 
-        # 统计每个文档内，单词出现的次数
+        #count number of word occurrence in each document
         anonymous_walks_cnt = [[] for _ in range(self.G.number_of_nodes())] 
         for i in range(self.G.number_of_nodes()):
             cnt = dict()
@@ -248,7 +266,7 @@ def random_walk(self, path_length, alpha=0, rand=random.Random(), start=None):
 
 
 def filter_any(seq): 
-    # 过滤1，2，3这种很长的序列
+    # filter 1, 2, 3 ... sequences
     G = nx.Graph()
     for i in range(len(seq) - 1):
         G.add_edge(seq[i], seq[i + 1])

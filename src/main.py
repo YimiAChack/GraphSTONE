@@ -14,12 +14,13 @@ from topic_gcn import StructuralTopicGCN
 if __name__ == "__main__":
     params = utils.load_json_file("../config.json")
     
-    # walk = Walks(params)
-    # walk.generate_topic_concepts()
+    walk = Walks(params)
+    walk.generate_topic_concepts()
 
-    # graph_topic_model = GraphAnchorLDA(params)
-    # graph_topic_model.learn_topic_distribution()
-    # graph_topic_model.select_topic_features()
-    model = StructuralTopicGCN(params)
-    model.train()
+    graph_topic_model = GraphAnchorLDA(params)
+    graph_topic_model.learn_topic_distribution()
+    graph_topic_model.select_topic_features()
+
+    topic_gcn_model = StructuralTopicGCN(params)
+    topic_gcn_model.train()
 

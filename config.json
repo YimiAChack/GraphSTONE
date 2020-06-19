@@ -12,18 +12,18 @@
     },
     "TopicModel":{
         "number_topic": 3, 
-        "eps": 10e-7,
-        "anchor_thresh": 50,
         "path_word_topic": "word_topic.txt",
         "path_doc_topic": "doc_topic.txt",
         "max_anchors_num": 100,
         "flag_max_dim": "True", 
-        "max_features_dim": 100,
-        "path_topic_features": "topic_feature.npy"
+        "max_features_dim": 1000,
+        "path_topic_features": "topic_feature.npy",
+        "eps": 10e-7,
+        "anchor_thresh": 50
     },
     "TopicGCN":{
-        "number_paths": 10,
-        "path_length": 6,
+        "number_paths": 128,
+        "path_length": 16,
         "window_size": 6,
         "batch_size": 100,
         "neg_size": 8,
@@ -34,6 +34,6 @@
         "hidden_dim": 100,
         "learning_rate": 0.002,
         "embedding_dims": 64,
-        "max_training_steps": 501
+        "max_training_steps": 5001
     }
 }
