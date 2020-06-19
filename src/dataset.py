@@ -81,42 +81,6 @@ class dataset:
         self.adj_info = self.adj_info.astype(int)
 
 
-        # 根据LDA的特征，有倾向地采样
-        # self.max_degree = int( max(self.degree_seq) * 1.5 ) # 采样的邻居范围变为原来的1.5倍（为了增加相同主题邻居的采样概率）
-        # self.adj_info = np.zeros((int(self.num_nodes), self.max_degree))
-        
-        # for node in range(self.num_nodes):
-        #     neighbors = self.get_neighbor(node)
-        #     lda_sim = []
-        #     for i in neighbors:
-        #         lda_sim.append(self.cos_sim(self.node_topic[node], self.node_topic[i])) # 计算每个节点主题和中心节点主题的余弦相似度
-
-        #     add_node_num = self.max_degree - len(neighbors)
-        #     # neighbors_new = 
-        #     neighbors_new = list()
-
-        #     sorted_sim = sorted(enumerate(lda_sim), key=lambda x: x[1], reverse=True) # 从大到小排序并保存下标
-        #     # [(idx, val)]
-
-        #     if len(sorted_sim) >= 2:
-        #         for _ in range(int(add_node_num * 0.3)): # 最相似的
-        #             neighbors_new.append(neighbors[sorted_sim[0][0]])
-
-        #         for _ in range(int(add_node_num * 0.2)): # second similar
-        #             neighbors_new.append(neighbors[sorted_sim[1][0]])
-
-        #         neighbors_new.extend(list(np.random.choice(neighbors, int(add_node_num*0.5) + len(neighbors))))
-        #     elif len(sorted_sim) == 1:
-        #         for _ in range(int(add_node_num * 0.4)): # most similar
-        #             neighbors_new.append(neighbors[sorted_sim[0][0]])
-        #             neighbors_new.extend(list(np.random.choice(neighbors, int(add_node_num*0.6) + len(neighbors))))
-        #     else:
-        #         neighbors_new.extend(list(np.random.choice(neighbors, add_node_num + len(neighbors))))
-
-
-        #     self.adj_info[node] = np.random.choice(neighbors_new, self.max_degree)
-        # self.adj_info = self.adj_info.astype(int)
-
     def load_graph(self, dataset_name):
         edge_list = []
         with open(os.path.join("../data/input", dataset_name, "edges.txt"), 'r') as infile:
