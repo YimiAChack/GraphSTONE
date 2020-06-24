@@ -1,39 +1,38 @@
 {
     "dataset": "cora",
     "input_node_feature": "True", 
-    "Walks":{
-        "number_paths": 20,
-        "path_length": 10,
+    "PreProcess":{
+        "number_paths": 50,
+        "path_length": 15,
         "anonymous_walk_max_length": 10,
-        "window_size": 10,
         "return_prob": 0, 
         "path_doc_word": "docword.txt",
         "path_vocab": "vocab.txt"
     },
     "TopicModel":{
-        "number_topic": 3, 
+        "number_topic": 5, 
+        "eps": 10e-7,
+        "anchor_thresh": 50,
         "path_word_topic": "word_topic.txt",
         "path_doc_topic": "doc_topic.txt",
         "max_anchors_num": 100,
         "flag_max_dim": "True", 
-        "max_features_dim": 1000,
-        "path_topic_features": "topic_feature.npy",
-        "eps": 10e-7,
-        "anchor_thresh": 50
+        "max_features_dim": 2500,
+        "path_topic_features": "topic_feature.npy"
     },
     "TopicGCN":{
-        "number_paths": 128,
+        "number_paths": 100,
         "path_length": 16,
         "window_size": 6,
         "batch_size": 100,
         "neg_size": 8,
         "num_skips": 5,
-        "num_neighbor": 4,
+        "num_neighbor": 20,
         "p": 0.25,
         "q": 1,
         "hidden_dim": 100,
         "learning_rate": 0.002,
         "embedding_dims": 64,
-        "max_training_steps": 5001
+        "max_training_steps": 5000
     }
 }

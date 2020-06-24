@@ -24,8 +24,8 @@ class GraphAnchorLDA(object):
     def __init__(self, params):
         self.K = params["TopicModel"]["number_topic"]
         self.number_topic = params["TopicModel"]["number_topic"]
-        self.path_doc_word = os.path.join("../data/output", params["dataset"], params["Walks"]["path_doc_word"])
-        self.path_vocab = os.path.join("../data/output", params["dataset"], params["Walks"]["path_vocab"])
+        self.path_doc_word = os.path.join("../data/output", params["dataset"], params["PreProcess"]["path_doc_word"])
+        self.path_vocab = os.path.join("../data/output", params["dataset"], params["PreProcess"]["path_vocab"])
         self.path_word_topic = os.path.join("../data/output", params["dataset"], params["TopicModel"]["path_word_topic"])
         self.path_doc_topic = os.path.join("../data/output", params["dataset"], params["TopicModel"]["path_doc_topic"])
         self.anchor_thresh = params["TopicModel"]["anchor_thresh"]
@@ -46,7 +46,7 @@ class GraphAnchorLDA(object):
         for i in range(self.M.shape[0]):
             if len(np.nonzero(self.M[i, :])[1]) > self.anchor_thresh:
                 candidate_anchors.append(i)
-        print ("candidates number:", len(candidate_anchors))
+        print ("Number of candidates:", len(candidate_anchors))
 
         #forms Q matrix from document-word matrix
         Q = self.generate_Q_matrix(self.M)
@@ -56,28 +56,27 @@ class GraphAnchorLDA(object):
         self.anchors = self.select_anchors(Q, candidate_anchors)
         
         # calculate walk-topic distribution 
-        self.walk_topic_distribution , topic_likelihoods = self.calculate_walk_topic_distribution(Q, self.anchors)
+        self.walk_topic_distribution, topic_likelihoods = self.calculate_walk_topic_distribution(Q, self.anchors)
 
-        np.savetxt(self.path_word_topic, self.walk_topic_distribution)
-  
 
     def generate_Q_matrix(self, M):
-        """
-           Given a sparse CSC document matrix M (with floating point entries),
-           comptues the word-word correlation matrix Q
+        """ Given a sparse CSC document matrix M (with floating point entries),
+            comptues the word-word correlation matrix Q
         """
         vocab_size = M.shape[0] # number of words
         num_docs = M.shape[1] # number of documents
         
         diag_M = np.zeros(vocab_size)
 
-        for j in range(M.indptr.size - 1):
+        for j in range(M.indptr.size - 1): # number of rows
             # start and end indices for column j
             start = M.indptr[j]
             end = M.indptr[j + 1]
-            
-            wpd = np.sum(M.data[start : end]) 
+
+            wpd = np.sum(M.data[start : end]) # sum of current row
             row_indices = M.indices[start:end]
+            # diag_M[row_indices] += M.data[start:end]/(wpd*(wpd-1)) # 如果有某个单词，从来没在某个文档出现过，就会出现nan
+            # M.data[start:end] = M.data[start:end]/math.sqrt(wpd*(wpd-1))
             if wpd == 0 or wpd == 1:
                 diag_M[row_indices] += 0
                 M.data[start : end] = 0
@@ -85,7 +84,7 @@ class GraphAnchorLDA(object):
                 diag_M[row_indices] += M.data[start : end] / (wpd * (wpd - 1))
                 M.data[start : end] = M.data[start : end] / math.sqrt(wpd * (wpd - 1))
         
-        Q = M * M.transpose()/ num_docs # avg co-occurrence word-word in each document
+        Q = M * M.transpose() / num_docs # avg co-occurrence word-word in each document
         Q = Q.todense()
         Q = np.array(Q, copy=False)
         diag_M = diag_M / num_docs
@@ -142,9 +141,12 @@ class GraphAnchorLDA(object):
         for k in range(K): 
             A[:, k] = A[:, k] / A[:,k].sum()
         
-        A = np.array(A) 
+        walk_topic_distribution = np.array(A) 
+
         print ("walk-topic distribution calculation finished")
-        return A, topic_likelihoods
+        np.savetxt(self.path_word_topic, walk_topic_distribution)
+
+        return walk_topic_distribution, topic_likelihoods
 
 
     def fast_recover(self, y, x, v, anchors):
@@ -187,7 +189,7 @@ class GraphAnchorLDA(object):
         x += 10**(-9)
         x /= x.sum(axis=1)[:,newaxis]
 
-        alpha = ones(K)/K
+        alpha = ones(K) / K
 
         old_alpha = copy(alpha)
         log_alpha = log(alpha)
@@ -227,7 +229,7 @@ class GraphAnchorLDA(object):
 
             grad_dot_deltaAlpha = dot(grad, alpha - old_alpha)
             assert (grad_dot_deltaAlpha <= 10**(-9))
-            if not new_obj <= old_obj + c1*stepsize*grad_dot_deltaAlpha: #sufficient decrease
+            if not new_obj <= old_obj + c1 * stepsize * grad_dot_deltaAlpha: #sufficient decrease
                 stepsize /= 2.0 #reduce stepsize
                 if stepsize < 10**(-6):
                     break
@@ -242,7 +244,7 @@ class GraphAnchorLDA(object):
             
             #compute the new gradient
             old_grad = copy(grad)
-            y_over_proj = y/proj
+            y_over_proj = y / proj
             grad = -dot(x, y_over_proj)
 
             if not dot(grad, alpha - old_alpha) >= c2 * grad_dot_deltaAlpha and not decreasing: #curvature
@@ -268,11 +270,13 @@ class GraphAnchorLDA(object):
 
 
 
-    def select_topic_features(self):
-        key_structures = self.find_key_structures(self.walk_topic_distribution)
-        # print(len(key_structures))
+    def generate_topic_features(self):
+        """ generate topic features based on walk topic distribution
+        """
+        key_structures = self.select_key_structures()
 
         M = self.M.toarray().T # document * word
+        print(M.shape)
 
         # generate lda features based on key_structures and walk_topic_distribution
         feats = np.zeros((M.shape[0], len(key_structures)))
@@ -284,37 +288,38 @@ class GraphAnchorLDA(object):
         # avoid 0
         for i in range(len(feats)):
             if np.all(feats[i] == 0.0): # all
-                feats[i][0] = 0.00001
+                feats[i][0] = 0.0001
 
 
         # if the max dim of lda features is restricted
-        if self.flag_max_dim: 
+        if self.flag_max_dim == "True": 
             np.save(self.path_topic_features, feats[ : , : self.max_features_dim])
-            return feats[ : , : self.max_features_dim]
-        
-        np.save(self.path_topic_features, feats)
-        return feats
+        else:
+            np.save(self.path_topic_features, feats)
 
 
-    def find_key_structures(self, walk_topic_distribution):
-        X = walk_topic_distribution
+    def select_key_structures(self):
+        """ select key structures based on walk topic distribution
+        """
+        X = self.walk_topic_distribution
         X_var = np.var(X, axis=1)
+        num = len(X_var)
 
         key_structures = []
 
-        for i in range(len(X_var)):
+        for i in range(num):
             if np.any(X[i] == 0.0): # select rows with large var
                 key_structures.append(i)
 
 
-        if self.flag_max_dim and len(key_structures) > self.max_features_dim:
+        if self.flag_max_dim == "True" and len(key_structures) > self.max_features_dim:
             return key_structures
 
-        if len(key_structures) < self.max_anchors_num:
-            return key_structures
+        if len(key_structures) > self.max_anchors_num:
+            return key_structures[ : self.max_anchors_num]
 
         argsorted = np.argsort(X_var) # larger one is in the back
-        for i in range(number - top_num - 1, number):
+        for i in range(num - self.max_anchors_num - 1, num):
             if argsorted[i] not in key_structures:
                 key_structures.append(argsorted[i])
 

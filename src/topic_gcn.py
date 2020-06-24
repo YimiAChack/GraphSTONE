@@ -37,7 +37,7 @@ class StructuralTopicGCN:
         self.q = params["TopicGCN"]["q"]
         self.flag_input_node_feature = params["input_node_feature"]
 
-        if params["input_node_feature"]: # !!!
+        if self.flag_input_node_feature == "True": 
             self.embedding_dims = params["TopicGCN"]["embedding_dims"] // 2 # combined model, finally will concate
         else:
             self.embedding_dims = params["TopicGCN"]["embedding_dims"]
@@ -52,9 +52,11 @@ class StructuralTopicGCN:
         self.Dataset = dataset(params)
         self.num_nodes = self.Dataset.num_nodes
         self.feature_dims = len(self.Dataset.node_features[0])
+
+        # if do not input original feature, self.node_features will be topic features
         self.node_features = self.Dataset.node_features
-        self.node_topic_features = self.Dataset.node_topic_features
-        self.feature_dims_topic = len(self.Dataset.node_topic_features[0])
+        if self.flag_input_node_feature == "True":
+            self.node_topic_features = self.Dataset.node_topic_features
 
         self.build_model()
         print("[%.2fs] Finish sampling, begin training ..." % (time.time() - self.start_time))
@@ -78,30 +80,30 @@ class StructuralTopicGCN:
         samples_negs = self.sample(self.batch_negs, self.num_neighbor, self.neg_size)
         samples_output = self.sample(self.batch_input, self.num_neighbor, self.input_size)
 
-
-        if self.flag_input_node_feature:
-            output_key = self.aggregate(samples_keys, self.batch_size, self.feature_dims, self.node_features, False)
-            output_label = self.aggregate(samples_labels, self.batch_size, self.feature_dims, self.node_features, False)
-            output_neg = self.aggregate(samples_negs, self.neg_size, self.feature_dims, self.node_features, False)
-            output_normal = self.aggregate(samples_output, self.input_size, self.feature_dims, self.node_features, False)
+        output_key = self.aggregate(samples_keys, self.batch_size, self.feature_dims, self.node_features, False)
+        output_label = self.aggregate(samples_labels, self.batch_size, self.feature_dims, self.node_features, False)
+        output_neg = self.aggregate(samples_negs, self.neg_size, self.feature_dims, self.node_features, False)
+        output = self.aggregate(samples_output, self.input_size, self.feature_dims, self.node_features, False)
+        
+        if self.flag_input_node_feature == "True":
+            feature_dims_topic = len(self.Dataset.node_topic_features[0])
+            output_key_topic = self.aggregate(samples_keys, self.batch_size, feature_dims_topic, self.node_topic_features, True)
+            output_label_topic = self.aggregate(samples_labels, self.batch_size, feature_dims_topic, self.node_topic_features, True)
+            output_neg_topic = self.aggregate(samples_negs, self.neg_size, feature_dims_topic, self.node_topic_features, True)
+            output_topic = self.aggregate(samples_output, self.input_size, feature_dims_topic, self.node_topic_features, True)
             
-            output_key_topic = self.aggregate(samples_keys, self.batch_size, self.feature_dims_topic, self.node_topic_features, True)
-            output_label_topic = self.aggregate(samples_labels, self.batch_size, self.feature_dims_topic, self.node_topic_features, True)
-            output_neg_topic = self.aggregate(samples_negs, self.neg_size, self.feature_dims_topic, self.node_topic_features, True)
-            output_topic = self.aggregate(samples_output, self.input_size, self.feature_dims_topic, self.node_topic_features, True)
-
+            # combine topic and normal vectors
             output_key_combine = self.combine(output_key, output_key_topic, self.batch_size)
             output_label_combine = self.combine(output_label, output_label_topic, self.batch_size)
             output_neg_combine = self.combine(output_neg, output_neg_topic, self.neg_size)
-            self.output = self.combine(output_normal, output_topic, self.input_size)# topic 和normal vector拼起来
+            self.output = self.combine(output, output_topic, self.input_size) 
             self.loss = self.compute_loss(output_key_combine, output_label_combine, output_neg_combine)
         else:
-            output_key = self.aggregate(samples_keys, self.batch_size, self.feature_dims, self.node_topic_features, False)
-            output_label = self.aggregate(samples_labels, self.batch_size, self.feature_dims, self.node_topic_features, False)
-            output_neg = self.aggregate(samples_negs, self.neg_size, self.feature_dims, self.node_topic_features, False)
-            output = self.aggregate(samples_output, self.input_size, self.feature_dims, self.node_topic_features, False)
-            self.output = output
-            self.loss = self.compute_loss()
+            output_key = tf.nn.l2_normalize(output_key, 1)
+            output_label = tf.nn.l2_normalize(output_label, 1)
+            output_neg = tf.nn.l2_normalize(output_neg, 1)
+            self.output = tf.nn.l2_normalize(output, 1)
+            self.loss = self.compute_loss(output_key, output_label, output_neg)
 
         self.optim = tf.train.AdamOptimizer(self.learning_rate)
       
@@ -116,7 +118,7 @@ class StructuralTopicGCN:
 
 
     def combine(self, output1, output2, len):
-        with tf.variable_scope("combine", reuse = tf.AUTO_REUSE): #???
+        with tf.variable_scope("combine", reuse = tf.AUTO_REUSE): 
             combine_weight = tf.get_variable("combined_W", [self.embedding_dims * 2, self.embedding_dims * 2], dtype = tf.float64, 
                         initializer = tf.contrib.layers.xavier_initializer())
             combine_bias = tf.get_variable("combined_bias", [self.embedding_dims * 2], dtype = tf.float64, 
@@ -131,6 +133,8 @@ class StructuralTopicGCN:
 
 
     def compute_loss(self, output_key, output_label, output_neg):
+        """ compute final unsupervised loss like GraphSAGE
+        """
         pos_aff = tf.reduce_sum(tf.multiply(output_key, output_label), axis = 1)
         neg_aff = tf.einsum("ij,kj->ik", output_key, output_neg)
         likelihood = tf.log(tf.sigmoid(pos_aff) + 1e-6) + tf.reduce_sum(tf.log(1 - tf.sigmoid(neg_aff) + 1e-6), axis = 1)        
@@ -138,18 +142,22 @@ class StructuralTopicGCN:
 
       
     def sampleNeighbor(self, batch_nodes, num_samples): 
+        """ sample 1-order neighbors around a center node
+        """
         adj_lists = tf.nn.embedding_lookup(self.Dataset.adj_info, batch_nodes) 
         adj_lists = tf.transpose(tf.random_shuffle(tf.transpose(adj_lists)))
         neigh_nodes = tf.slice(adj_lists, [0, 0], [-1, num_samples])
         
-        return  tf.squeeze(neigh_nodes) 
+        return  tf.squeeze(neigh_nodes)
 
 
     def sample(self, inputs, num_sample, input_size):
+        """ sample 2-order neighbors around a center node
+        """
         samples = [inputs]
         support_size = input_size
 
-        for k in range(2): # 2-order neighbours
+        for k in range(2): 
             support_size *= num_sample
             nodes = self.sampleNeighbor(samples[k], num_sample)
             samples.append(tf.reshape(nodes, [support_size]))
@@ -158,6 +166,10 @@ class StructuralTopicGCN:
 
 
     def aggregate(self, sample_nodes, input_size, feature_dims, features, flag_topic):
+        """ aggregator
+        Args:
+            flag_topic: topic aggregator or not
+        """
         dims = [feature_dims, self.hidden_dim, self.embedding_dims]
         support_size = [1, self.num_neighbor, self.num_neighbor**2]
         hidden_nodes = [tf.nn.embedding_lookup(features, nodes) for nodes in sample_nodes]
@@ -201,7 +213,7 @@ class StructuralTopicGCN:
         t.start()
         
         losses = []
-        for i in range(self.num_steps):
+        for i in range(self.num_steps + 1):
             keys, labels, negs = q.get()
             _, batch_loss = self.sess.run([
                 self.opt_op, 
@@ -214,7 +226,7 @@ class StructuralTopicGCN:
             })
             losses.append(batch_loss)
             if i and i % 100 == 0:
-                print("[%.2fs] After %d iters, loss  on training is %.4f."%(time.time() - self.start_time, i, np.mean(losses)))
+                print("[%.2fs] After %d iters, loss on training is %.4f."%(time.time() - self.start_time, i, np.mean(losses)))
                 losses = []
             if i and i % 500 == 0:
                 self.evaluation()
@@ -223,33 +235,44 @@ class StructuralTopicGCN:
     
     
     def get_full_embeddings(self):
-        self.embedding_array = np.zeros((self.Dataset.num_nodes, self.embedding_dims * 3))
-        batch_size = 100
-        for i in range(self.Dataset.num_nodes // batch_size + 1):
-            if i != self.Dataset.num_nodes // batch_size:
-                batchnode = np.arange(100*i, 100*i+100)
+        """ compute the embeddings of all nodes
+        """
+        if self.flag_input_node_feature == "True": 
+            self.embedding_array = np.zeros((self.Dataset.num_nodes, self.embedding_dims * 3))
+        else:
+            self.embedding_array = np.zeros((self.Dataset.num_nodes, self.embedding_dims))
+
+        for i in range(self.Dataset.num_nodes // self.batch_size + 1):
+            if i != self.Dataset.num_nodes // self.batch_size:
+                batchnode = np.arange(self.batch_size * i, self.batch_size * i + self.batch_size)
                 batch_embeddings = self.sess.run([self.output], feed_dict = {
                     self.batch_input: batchnode, 
-                    self.input_size: 100
+                    self.input_size: self.batch_size
                 })
-                self.embedding_array[100*i : 100*i + 100] = batch_embeddings[0]
+                self.embedding_array[self.batch_size * i : self.batch_size * i + self.batch_size] = batch_embeddings[0]
             else:
-                batchnode = np.arange(100*i, self.num_nodes)
+                batchnode = np.arange(self.batch_size * i, self.num_nodes)
                 batch_embeddings = self.sess.run([self.output], feed_dict = {
                     self.batch_input: batchnode, 
-                    self.input_size: self.num_nodes - 100*i
+                    self.input_size: self.num_nodes - self.batch_size*i
                 })
-                self.embedding_array[100*i : self.num_nodes] = batch_embeddings[0]
+                self.embedding_array[self.batch_size * i : self.num_nodes] = batch_embeddings[0]
         return self.embedding_array
 
     
     def save_embeddings(self, step):
+        """ export node embeddings
+        """
         np.save(os.path.join(self.save_path, str(step)), arr = self.embedding_array)
-        print("Embedding saved for step #%d" %step)
+        print("Embedding saved for step #%d" % step)
+        if step == self.num_steps:
+            np.save(os.path.join(self.save_path, "final_embeddings.npy"), arr = self.embedding_array)
+
 
     def evaluation(self):
-        # the evaluate_model is only used for tracking the training process and cannot be used 
-        # for formal model evaluation
+        """ the evaluate_model is only used for tracking the training process and cannot be used 
+            for formal model evaluation !!!
+        """
         self.get_full_embeddings()
         macros = []
         micros = []

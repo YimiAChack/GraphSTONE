@@ -9,7 +9,7 @@ import networkx as nx
 import utils
 
 
-class Walks(object):
+class PreProcess(object): 
     """ generate topic concepts, for the input of GraphAnchorLDA
     Args:
         number_paths: number of random walks started from a center node
@@ -20,13 +20,13 @@ class Walks(object):
     """
     def __init__(self, params): 
         self.G = nx.read_edgelist(os.path.join("../data/input", params["dataset"], "edges.txt"), create_using = nx.Graph())
-        self.params = params
-        self.path_out_docword = os.path.join("../data/output", params["dataset"], params["Walks"]["path_doc_word"])
-        self.path_out_vocab = os.path.join("../data/output", params["dataset"], params["Walks"]["path_vocab"])
-        self.number_paths = self.params["Walks"]["number_paths"]
-        self.anonymous_walk_max_length = self.params["Walks"]["anonymous_walk_max_length"]
-        self.path_length = self.params["Walks"]["path_length"]
-        self.return_prob = self.params["Walks"]["return_prob"]
+        self.path_out_docword = os.path.join("../data/output", params["dataset"], params["PreProcess"]["path_doc_word"])
+        self.path_out_vocab = os.path.join("../data/output", params["dataset"], params["PreProcess"]["path_vocab"])
+        self.number_paths = params["PreProcess"]["number_paths"]
+        self.anonymous_walk_max_length = params["PreProcess"]["anonymous_walk_max_length"]
+        self.path_length = params["PreProcess"]["path_length"]
+        self.return_prob = params["PreProcess"]["return_prob"]
+        print("start generating topic concepts")
 
         
     def generate_topic_concepts(self):
@@ -48,11 +48,8 @@ class Walks(object):
     def generate_random_walks(self, rand=random.Random(0)):
         """generate random walks
         """
-        print("Walking...")
-        nodes = list(self.G.nodes())
         walks = list()
-
-        for node in nodes:
+        for node in list(self.G.nodes()):
             for _ in range(self.number_paths):
                 walks.append(self.random_walk(rand=rand, start=node))
         return walks
@@ -75,7 +72,6 @@ class Walks(object):
 
     def random_walk(self, rand=random.Random(), start=None):
         """ Returns a truncated random walk.
-            path_length: Length of the random walk.
             alpha: probability of restarts.
             start: the start node of the random walk.
         """
@@ -83,8 +79,8 @@ class Walks(object):
             print("random walk need a start node!")
         path = [start]
 
-        self.path_length = random.randint(4, self.path_length + 1)
-        while len(path) < self.path_length:
+        cur_path_length = random.randint(4, self.path_length + 1)
+        while len(path) < cur_path_length:
             cur = path[-1]
             if len(self.G.neighbors(cur)) > 0:
                 if rand.random() >= self.return_prob:
@@ -202,13 +198,13 @@ class Walks(object):
                 w = " ".join(w) # "1 2 3"
 
                 if w in anonymous_dict:
-                    anonymous_walks_idx[i].append(anonymous_dict[str(w)])
+                    anonymous_walks_idx[i].append(anonymous_dict[w])
                     # one document: ['0', '0', '5'], '0' and '5' present different anonymous walks
                 else:
                     anonymous_dict[w] = str(idx)
                     idx += 1
                     out_vocal.write(w + "\n")
-                    anonymous_walks_idx[i].append(anonymous_dict[str(w)])
+                    anonymous_walks_idx[i].append(anonymous_dict[w])
 
 
         #count number of word occurrence in each document
@@ -232,52 +228,3 @@ class Walks(object):
         
         out.close()
 
-
-'''
-def random_walk(self, path_length, alpha=0, rand=random.Random(), start=None):
-    """ Returns a truncated random walk.
-
-            path_length: Length of the random walk.
-            alpha: probability of restarts.
-            start: the start node of the random walk.
-    """
-    G = self
-    if start is None:
-        print("random walk in this prokect need a start node!")
-
-    path = [start]
-    path_length = random.randint(4, path_length + 1)
-    while len(path) < path_length:
-        cur = path[-1]
-        if len(G[cur]) > 0:
-            if rand.random() >= alpha:
-                tmp = rand.choice(G[cur])
-                if len(path) >= 2 and tmp == path[-2]:
-                    if rand.random() >= 0.6: # need change!!
-                        path.append(tmp)
-                else:
-                    path.append(tmp)
-            else:
-                path.append(path[0])
-        else:
-            break
-    return [str(node) for node in path]
-
-
-
-def filter_any(seq): 
-    # filter 1, 2, 3 ... sequences
-    G = nx.Graph()
-    for i in range(len(seq) - 1):
-        G.add_edge(seq[i], seq[i + 1])
-
-    one = 0
-    for node in G:
-        if G.degree(node) == 1:
-            one += 1
-        elif G.degree(node) > 2:
-            return False
-        if one == 0:
-            return False
-        return True
-'''

@@ -26,17 +26,22 @@ class dataset:
         self.batch_size = params["TopicGCN"]["batch_size"]
         self.neg_size = params["TopicGCN"]["neg_size"]
         self.num_skips = params["TopicGCN"]["num_skips"]
+        self.flag_input_node_feature = params["input_node_feature"]
         self.p = params["TopicGCN"]["p"]
         self.q = params["TopicGCN"]["q"]
         self.data_idx = 0
 
         dataset_name = params["dataset"] 
-
-        # original node features
-        self.node_features = np.load(os.path.join("../data/input", dataset_name, "features.npy"))
-
-        # load lda features
-        self.node_topic_features = np.load(os.path.join("../data/output", dataset_name, params["TopicModel"]["path_topic_features"]))
+ 
+        if self.flag_input_node_feature == "True":
+            # original node features
+            self.node_features = np.load(os.path.join("../data/input", dataset_name, "features.npy"))
+            # load topic features
+            self.node_topic_features = np.load(os.path.join("../data/output", dataset_name, params["TopicModel"]["path_topic_features"]))
+        else:
+            # if do not input original feature, self.node_features will be topic features
+            self.node_features = np.load(os.path.join("../data/output", dataset_name, params["TopicModel"]["path_topic_features"]))
+            
         
         self.g, self.num_nodes = self.load_graph(dataset_name)
         self.node2label = self.load_label(dataset_name)
@@ -52,7 +57,6 @@ class dataset:
             random.shuffle(nodes)
             for node in nodes:
                 walk = self.generate_random_walk(node, self.path_length)
-                # walk = self.node2vec_walk(node, self.path_length)
                 self.random_walks.append(walk)
             
         self.node_walks = [[] for i in range(self.num_nodes)]
@@ -70,7 +74,7 @@ class dataset:
             for _ in range(distr):
                 self.neg_sampling_seq.append(i)
 
-        # graphsage 邻居采样
+        # graphsage neighbor sampling
         self.adj_info = np.zeros((int(self.num_nodes), int(max(self.degree_seq))))
         self.max_degree = max(self.degree_seq)
         for node in range(self.num_nodes):
@@ -109,9 +113,11 @@ class dataset:
         node2label = node2label.astype(int)
         return node2label
 
-    def get_neighbor(self, node): # 获取邻居
+    def get_neighbor(self, node):
+        """ return neighbor node set of a certain center node
+        """
         neighbor = [n for n in self.g.neighbors(node)]
-        return neighbor  # return neighbor node set of a certain node
+        return neighbor
 
     def get_alias_edge(self, src, dst):
         unnormalized_probs = []
@@ -161,7 +167,7 @@ class dataset:
             thiskey = self.random_walks[self.data_idx][0]
             thislabel = self.random_walks[self.data_idx][random.randint(1, self.window_size-1)]
                     
-            keys.append(thiskey)  # 中心点
+            keys.append(thiskey)  # center node
             labels.append(thislabel) # positive neighbour
             self.data_idx += 1
             self.data_idx %= len(self.random_walks)
@@ -208,37 +214,4 @@ class dataset:
         
         return J, q        
 
-    '''
-    def node2vec_walk(self, begin_node, path_length):
-        walk = [begin_node]
-        alias_nodes = self.alias_nodes
-        alias_edges = self.alias_edges
-        
-        while(len(walk) < path_length):
-            cur = walk[-1]
-            cur_neighbors = self.get_neighbor(cur)
-            cur_neighbors = sorted(cur_neighbors)
-            if len(cur_neighbors):
-                if len(walk) == 1:
-                    abc = alias_draw(alias_nodes[cur][0], alias_nodes[cur][1])
-
-                    walk.append(cur_neighbors[abc])
-                else:
-                    prev = walk[-2]
-                    nextnode = cur_neighbors[alias_draw(alias_edges[(prev, cur)][0], 
-                        alias_edges[(prev, cur)][1])]
-                    walk.append(nextnode)
-            else:
-                break
-
-        return walk
-
-    def alias_draw(self, J, q):
-        K = len(J)
-        
-        kk = int(np.floor(np.random.rand()*K))
-        if np.random.rand()<q[kk]:
-            return kk
-        else:
-            return J[kk]
-    '''
+ 
