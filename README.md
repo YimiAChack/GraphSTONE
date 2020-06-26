@@ -9,25 +9,19 @@ http://arxiv.org/abs/2006.14278
 `python main.py`
 
 #### Parameters
-
 For parameter settings, please see `conf.json`
+Some parameter definitions:
+| Name                    | Default |                Note                 |
+| :---------------------- | ------: | :---------------------------------: |
+| dataset                 |    cora |            dataset name             |
+| input_node_feature      |    True | input original node features or not |
+| PreProcess/number_paths |  50 |                 number of paths from a center node, for generating "word" and "document" concepts on graphs                 |
+| PreProcess/path_length |  15 |                 max length of random walks from a center node, for generating "word" and "document" concepts on graphs                 |
+| PreProcess/anonymous_walk_max_length |  10 |                 max length of anonymous walks, for generating "word" and "document" concepts on graphs                 |
+| TopicModel/number_topic |   5 |                 number of structural-topics                 |
+| TopicModel/max_features_dim |  2500 |                 max topic_features (for the input of structural-topic GNN) dimension                 |
+| TopicGCN/max_training_steps         | 5000 |            max steps for training            |
 
-
-
-| Name  |  Default| Note|
-
-| :-------- | --------:| :--: |
-
-| Computer | 1600 元 | 5 |
-
-| Phone  | 12 元 | 12 |
-
-| Pipe   |  1 元 | 234 |
-
-
-
-#### Evaluation
-We provide node classification and link prediction tasks in `utils.py`.
 
 #### Data
 We provide cora and ppi datasets as examples under `data/cora` and `data/ppi`. 
