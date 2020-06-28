@@ -3,16 +3,14 @@ A TensorFlow implementation of GraphSTONE, as described in our paper:
 
 >  Graph Structural-topic Neural Network (KDD 2020, Research Track)
 
-http://arxiv.org/abs/2006.14278
+See our [Paper](http://arxiv.org/abs/2006.14278), and [Slides](https://github.com/YimiAChack/Files/blob/master/GraphSTONE%20slides.pdf).
 
 #### How to Use
 `python main.py`
 
 #### Dependencies
 
-Tensorflow 1.10.0
-Networkx 1.11
-Python 3
+Tensorflow 1.10.0, Networkx 1.11, Python 3
 
 #### Data
 We provide cora and ppi datasets as examples under `data/cora` and `data/ppi`. 
@@ -27,7 +25,7 @@ Some parameter definitions:
 | Name                    | Default |                Note                 |
 | :---------------------- | ------: | :---------------------------------: |
 | dataset                 |    cora |            dataset name             |
-| input_node_feature      |    True | input original node features or not |
+| input_node_feature      |    True | input original node features ("True") or not ("False")|
 | PreProcess/number_paths |  50 |                 number of paths from a center node, for generating "word" and "document" concepts on graphs                 |
 | PreProcess/path_length |  15 |                 max length of random walks from a center node, for generating "word" and "document" concepts on graphs                 |
 | TopicModel/number_topic |   5 |                 number of structural-topics                 |

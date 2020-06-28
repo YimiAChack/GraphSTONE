@@ -21,7 +21,7 @@
         "path_topic_features": "topic_feature.npy"
     },
     "TopicGCN":{
-        "number_paths": 100,
+        "number_paths": 120,
         "path_length": 16,
         "window_size": 6,
         "batch_size": 100,
@@ -33,6 +33,6 @@
         "hidden_dim": 100,
         "learning_rate": 0.002,
         "embedding_dims": 64,
-        "max_training_steps": 5000
+        "max_training_steps": 6000
     }
 }
