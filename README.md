@@ -3,7 +3,7 @@ A TensorFlow implementation of GraphSTONE, as described in our paper:
 
 >  Graph Structural-topic Neural Network (KDD 2020, Research Track)
 
-See our [Paper](http://arxiv.org/abs/2006.14278), and [Slides](https://github.com/YimiAChack/Files/blob/master/GraphSTONE%20slides.pdf).
+See our [Paper](http://arxiv.org/abs/2006.14278), and [Slides](https://github.com/YimiAChack/Files/blob/master/GraphSTONE_slides.pdf).
 
 #### How to Use
 `python main.py`
