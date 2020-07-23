@@ -24,7 +24,6 @@ class PreProcess(object):
         self.path_out_vocab = os.path.join("../data/output", params["dataset"], params["PreProcess"]["path_vocab"])
         self.number_paths = params["PreProcess"]["number_paths"]
         self.anonymous_walk_max_length = params["PreProcess"]["anonymous_walk_max_length"]
-        self.path_length = params["PreProcess"]["path_length"]
         self.return_prob = params["PreProcess"]["return_prob"]
         print("start generating topic concepts")
 
@@ -62,11 +61,10 @@ class PreProcess(object):
 
         for random_walk_seq in random_walks:
             anonymous_walk_seq = self.random_to_anonymous_walk(random_walk_seq)
-            if 2 < len(anonymous_walk_seq) <= self.anonymous_walk_max_length: # select seq with specified length
-                center_node = int(random_walk_seq[0])
-                anonymous_walks[center_node].append(anonymous_walk_seq) 
-                # if not filter_any(anonym_walk):
-                #     anonymous_walks[int(w[0])].append(anonym_walk)
+            center_node = int(random_walk_seq[0])
+            anonymous_walks[center_node].append(anonymous_walk_seq) 
+            # if not filter_any(anonym_walk):
+            #     anonymous_walks[int(w[0])].append(anonym_walk)
         return anonymous_walks
 
 
@@ -79,7 +77,7 @@ class PreProcess(object):
             print("random walk need a start node!")
         path = [start]
 
-        cur_path_length = random.randint(4, self.path_length + 1)
+        cur_path_length = random.randint(4, self.anonymous_walk_max_length + 1)
         while len(path) < cur_path_length:
             cur = path[-1]
             if len(self.G.neighbors(cur)) > 0:
@@ -199,7 +197,7 @@ class PreProcess(object):
 
                 if w in anonymous_dict:
                     anonymous_walks_idx[i].append(anonymous_dict[w])
-                    # one document: ['0', '0', '5'], '0' and '5' present different anonymous walks
+                    # one document: ['0', '0', '5'], '0' and '5' represent different anonymous walks
                 else:
                     anonymous_dict[w] = str(idx)
                     idx += 1

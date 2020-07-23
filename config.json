@@ -3,7 +3,6 @@
     "input_node_feature": "True", 
     "PreProcess":{
         "number_paths": 50,
-        "path_length": 15,
         "anonymous_walk_max_length": 10,
         "return_prob": 0, 
         "path_doc_word": "docword.txt",
