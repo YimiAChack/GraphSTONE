@@ -32,7 +32,16 @@ Some parameter definitions:
 | TopicModel/max_features_dim |  2500 |                 max topic_features (for the input of structural-topic GNN) dimension                 |
 | TopicGCN/max_training_steps         | 5000 |            max steps for training            |
 
-
+#### Cite
+```
+@inproceedings{long2020graph,
+  title={Graph Structural-topic Neural Network},
+  author={Long, Qingqing and Jin, Yilun and Song, Guojie and Li, Yi and Lin, Wei},
+  booktitle={Proceedings of the 26th ACM SIGKDD International Conference on Knowledge Discovery \& Data Mining},
+  pages={1065--1073},
+  year={2020}
+}
+```
 #### Acknowledgments
 
 Certain parts of this project are partially derived from [GraLSP](https://github.com/KL4805/GRALSP) and [AnchorRecovery](https://github.com/CatalinVoss/anchor-baggage/tree/master/anchor-word-recovery).
